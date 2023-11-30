@@ -77,6 +77,8 @@ bot = commands.Bot(
 )
 
 backEndSVR = os.environ['BACKENDSVR']
+canBroadCasterTTS = os.environ['BROADCASTERTTS']
+isGoogleVoiceEnabled = os.environ['USEGOOGLETTS']
 
 print('Back end Server addr: ', backEndSVR)
 
@@ -109,23 +111,39 @@ async def event_message(data):
 
     jsonObj = json.loads(resp.json())
     name = jsonObj["nick"]
+    userTTSEnabled = jsonObj["usesGCTTS"]
     
-    if(name == "noneBlankdefault"):
-        name = userName
-        replaced_chars = [replacements.get(char, char) for char in name] 
-        pronounced_name = ''.join(replaced_chars)
-        msg = pronounced_name + " said " + userSaid
-        msgOut = userName + ": " + userSaid 
-        print(msgOut)
-        GCTTSsay(msg, jsonObj)
+    replaced_chars = [replacements.get(char, char) for char in name] 
+    pronounced_name = ''.join(replaced_chars)
+    msgOut = userName + ": " + userSaid 
+    print(msgOut)
+    
+    if(isGoogleVoiceEnabled):
+        print("Using GC Voice")
+        if(name == "noneBlankdefault" and userCanTTS(userIsBroadcaster, canBroadCasterTTS, userTTSEnabled) == True):
+            name = userName
+            replaced_chars = [replacements.get(char, char) for char in name] 
+            pronounced_name = ''.join(replaced_chars)
+            msg = pronounced_name + " said " + userSaid
+            msgOut = userName + ": " + userSaid 
+            GCTTSsay(msg, jsonObj)
+        
+        print(name)
+        if(name != "noneBlankdefault" and userCanTTS(userIsBroadcaster, canBroadCasterTTS, userTTSEnabled) == True):
+            replaced_chars = [replacements.get(char, char) for char in name] 
+            pronounced_name = ''.join(replaced_chars)
+            msg = pronounced_name + " said " + userSaid
+            msgOut = userName + ": " + userSaid 
+            GCTTSsay(msg, jsonObj)
     else:
+        print("Using MS Voice")
         replaced_chars = [replacements.get(char, char) for char in name] 
         pronounced_name = ''.join(replaced_chars)
         msg = pronounced_name + " said " + userSaid
         msgOut = userName + ": " + userSaid 
-        print(msgOut)
-        GCTTSsay(msg, jsonObj)
+        MSTTSSay(msg, jsonObj)
 
+#Change to return 1 'male' voice as default??
 def getVoiceGender(gender):
     match gender:
         case 'undefined':
@@ -158,12 +176,40 @@ def GCTTSsay(msg, person):
 
     winsound.PlaySound(response.audio_content, winsound.SND_MEMORY)
 
-def MSTTSSay(msg, chatterIDX):
-    voice = getMSVoiceInfo(chatterIDX).id
-    tts.setProperty('voice', voice)
+def MSTTSSay(msg, person):
+    useSSMLGender = getVoiceGender(person['gcSSMLGender'])
+    maleVoice = r"C:\Windows\Speech_OneCore\Engines\TTS\en-US\M1033David"
+    femaleVoice = r"C:\Windows\Speech_OneCore\Engines\TTS\en-US\M1033Zira"
+    
+    if(useSSMLGender == 'female'):
+        tts.setProperty('voice', femaleVoice)
+    else:
+        tts.setProperty('voice', maleVoice)
+        
     tts.say(msg)
     tts.runAndWait()
 
+def userCanTTS(userIsBroadcaster, inCanBroadCasterTTS, userTTSEnabled):
+    
+    if (inCanBroadCasterTTS == 'True'):
+        canBroadCasterTTS = True
+    else:
+        canBroadCasterTTS = False
+    
+    print('User is Broadcaster :', type(userIsBroadcaster))
+    print('Can BroadcasterTTS  :', type(canBroadCasterTTS))
+    print('Is User TTS Enabled :', type(userTTSEnabled))
+
+    if(canBroadCasterTTS):
+        print("Broadcaster can TTS")
+
+    if(userIsBroadcaster):
+        return canBroadCasterTTS
+    else:
+        return userTTSEnabled
+
+    return False
+    
 if __name__ == "__main__":
     bot.run()
 

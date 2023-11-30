@@ -1,11 +1,11 @@
 import json, os, atexit
 from threading import Timer, enumerate
  
+from profileDB import profileDB, profileListItem
+
 from fastapi import FastAPI, Response, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-
-from profileDB import profileDB, profileListItem
 
 from dotenv import load_dotenv
 from google.cloud import texttospeech
@@ -129,7 +129,8 @@ async def getUserProfile(request: Request):
             print("0:", data)
             return data
 
-    return '{"nick": "noneBlankdefault" , "gcLangCode": "en-US", "gcName": "en-US-Wavenet-C", "gcSSMLGender": "female"}'
+    #Add this to future bot settings update
+    return '{"nick": "noneBlankdefault" , "gcLangCode": "en-US", "gcName": "en-US-Wavenet-C", "gcSSMLGender": "female", "usesGCTTS", "true"}'
     
 @app.get("/getGCVoicesList")
 def getGCVoiceList():
