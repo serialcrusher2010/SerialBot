@@ -3,6 +3,7 @@ import pyttsx3
 import random
 import pickle
 import requests, json
+import re
 from threading import Timer
 
 from google.cloud import texttospeech
@@ -42,8 +43,6 @@ request = texttospeech.ListVoicesRequest()
 voiceListGC = client.list_voices(request=request).voices
 numGCVoices = len(voiceListGC)
 
-print(numGCVoices)
-
 class profileListItem:
     def __init__(self, name, nick):
         self.name = name
@@ -78,7 +77,13 @@ bot = commands.Bot(
 
 backEndSVR = os.environ['BACKENDSVR']
 canBroadCasterTTS = os.environ['BROADCASTERTTS']
-isGoogleVoiceEnabled = os.environ['USEGOOGLETTS']
+inIsGoogleVoiceEnabled = os.environ['USEGOOGLETTS']
+
+if (inIsGoogleVoiceEnabled == 'True'):
+    isGoogleVoiceEnabled = True
+else:
+    isGoogleVoiceEnabled = False
+
 
 print('Back end Server addr: ', backEndSVR)
 
@@ -107,8 +112,6 @@ async def event_message(data):
     data = json.dumps({'name': userName})
     resp = requests.post(backEndSVR + '/getUserProfile', data)
 
-    print(resp.json())
-
     jsonObj = json.loads(resp.json())
     name = jsonObj["nick"]
     userTTSEnabled = jsonObj["usesGCTTS"]
@@ -118,32 +121,36 @@ async def event_message(data):
     msgOut = userName + ": " + userSaid 
     print(msgOut)
     
-    if(isGoogleVoiceEnabled):
-        print("Using GC Voice")
+    if(isGoogleVoiceEnabled == True and not containsURLS(userSaid)):
         if(name == "noneBlankdefault" and userCanTTS(userIsBroadcaster, canBroadCasterTTS, userTTSEnabled) == True):
-            name = userName
-            replaced_chars = [replacements.get(char, char) for char in name] 
+            replaced_chars = [replacements.get(char, char) for char in userName] 
             pronounced_name = ''.join(replaced_chars)
             msg = pronounced_name + " said " + userSaid
             msgOut = userName + ": " + userSaid 
             GCTTSsay(msg, jsonObj)
         
-        print(name)
         if(name != "noneBlankdefault" and userCanTTS(userIsBroadcaster, canBroadCasterTTS, userTTSEnabled) == True):
             replaced_chars = [replacements.get(char, char) for char in name] 
             pronounced_name = ''.join(replaced_chars)
             msg = pronounced_name + " said " + userSaid
             msgOut = userName + ": " + userSaid 
             GCTTSsay(msg, jsonObj)
-    else:
-        print("Using MS Voice")
-        replaced_chars = [replacements.get(char, char) for char in name] 
-        pronounced_name = ''.join(replaced_chars)
-        msg = pronounced_name + " said " + userSaid
-        msgOut = userName + ": " + userSaid 
-        MSTTSSay(msg, jsonObj)
+    
+    elif(not containsURLS(userSaid)):
+        if(name == "noneBlankdefault" and userCanTTS(userIsBroadcaster, canBroadCasterTTS, userTTSEnabled) == True):
+            replaced_chars = [replacements.get(char, char) for char in userName] 
+            pronounced_name = ''.join(replaced_chars)
+            msg = pronounced_name + " said " + userSaid
+            msgOut = userName + ": " + userSaid 
+            MSTTSSay(msg, jsonObj)
+        
+        if(name != "noneBlankdefault" and userCanTTS(userIsBroadcaster, canBroadCasterTTS, userTTSEnabled) == True):
+            replaced_chars = [replacements.get(char, char) for char in name] 
+            pronounced_name = ''.join(replaced_chars)
+            msg = pronounced_name + " said " + userSaid
+            msgOut = userName + ": " + userSaid 
+            MSTTSSay(msg, jsonObj)
 
-#Change to return 1 'male' voice as default??
 def getVoiceGender(gender):
     match gender:
         case 'undefined':
@@ -155,8 +162,7 @@ def getVoiceGender(gender):
         case 'neutral':
             return 3
 
-def GCTTSsay(msg, person):
-    print(person)    
+def GCTTSsay(msg, person):    
     useLangCode = person['gcLangCode']
     useSSMLGender = getVoiceGender(person['gcSSMLGender'])
     useName = person['gcName']
@@ -196,19 +202,24 @@ def userCanTTS(userIsBroadcaster, inCanBroadCasterTTS, userTTSEnabled):
     else:
         canBroadCasterTTS = False
     
-    print('User is Broadcaster :', type(userIsBroadcaster))
-    print('Can BroadcasterTTS  :', type(canBroadCasterTTS))
-    print('Is User TTS Enabled :', type(userTTSEnabled))
-
-    if(canBroadCasterTTS):
-        print("Broadcaster can TTS")
-
+    #Consider just passing userTTSEnabled back for both broadcaster and regular chatters
     if(userIsBroadcaster):
         return canBroadCasterTTS
     else:
         return userTTSEnabled
 
     return False
+
+def containsURLS(string):
+    
+    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
+    url = re.findall(regex, string)
+    
+    if len(url) == 0:
+        return False
+    else: 
+        return True
+
     
 if __name__ == "__main__":
     bot.run()

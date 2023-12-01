@@ -130,7 +130,7 @@ async def getUserProfile(request: Request):
             return data
 
     #Add this to future bot settings update
-    return '{"nick": "noneBlankdefault" , "gcLangCode": "en-US", "gcName": "en-US-Wavenet-C", "gcSSMLGender": "female", "usesGCTTS", "true"}'
+    return '{"nick": "noneBlankdefault" , "gcLangCode": "en-US", "gcName": "en-US-Wavenet-C", "gcSSMLGender": "female", "usesGCTTS", true}'
     
 @app.get("/getGCVoicesList")
 def getGCVoiceList():
