@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SerialBot | My Super Chat!!</title>
 
+    <link href="asset/bootstrap.min.css" rel="stylesheet">
+    <script defer src="asset/bootstrap.bundle.min.js"></script>
+<!--
 <style>
-    .button1 {width: 100%}
-    .nameList {width: 100%}
-    .gcVoiceList {width: 100%}
-    .theDiv {background-color: #FFFFFF}
+    .body {background-color: #090909; color: red }
+    .button1 {width: 100%; background-color: #090909; color: red;}
+    .nameList {width: 100%; background-color: #090909; color: red;}
+    .gcVoiceList {width: 100%; background-color: #090909; color: red;}
+    .theDiv {background-color: #090909}
+    .textBox {background-color: #090909; color: red }
 </style>
+-->
 
 </head>
-<body>
+<body class="body">
 <table border="1" width="100%">
     <tr style="height:100%">
         <td width="100" valign="top" align="left">
@@ -22,14 +31,17 @@
             <button id="getGCVoicesList" class="button1">List GC Voices</button>
         </td>
         <td valign="top" align="left">
-            <div id="statusDiv" class="theDiv">Status Div
+            <div id="statusDiv" class="theDiv">
+                <label id="statusCbconnected"></label><br>
+                <label id="statusNumberOfGCVoices"></label><br>
+                <label id="statusNumberOfProfiles"></label><br>
             </div>
             <div id="createProfileDiv" class="theDiv">
                 <table>
                     <tr>
                         <td valign="top">Name:</td>
                         <td>
-                                <input id="createProfileName"><br>
+                                <input class="textBox" id="createProfileName"><br>
                                 <button id="createProfileSubmit">Submit</button>                           
                         </td>
                     </tr>
@@ -41,7 +53,7 @@
                     <tr>
                         <td width="300"><select class="gcVoiceList" id="modifyGCVoiceInfo" size="9" multiple></select></select></td>
                         <td valign="top" width="75px">Nick:<br>Use TTS:</td>
-                        <td width="50%" valign="top"><input id="modifyProfileNick"><br>
+                        <td width="50%" valign="top"><input class="textBox" id="modifyProfileNick"><br>
                         <input type="checkbox" id="modifyGcUsesTTS"><br>
                         <button id="modifyProfileSubmit">Submit</button>
                         </td>
@@ -67,17 +79,21 @@
     </tr>
 </table>
 
+
+
 <script>
+        
         hideDiv()
         refreshNameLists()
         refreshVoicesLists()
+        getSystemStatus()
         document.getElementById("statusDiv").style.display = "block"
-        
         buttons = document.getElementsByTagName("button")
         Array.from(buttons).forEach(button => button.addEventListener("click", (e) => {
         switch(e.target.getAttribute('id')){
             case 'status':
                 hideDiv()
+                getSystemStatus()
                 document.getElementById("statusDiv").style.display = "block"
                 break
             case "createProfile":
@@ -105,21 +121,37 @@
             //Cases for 'dynamic' buttons
             case 'createProfileSubmit':
                 name = document.getElementById('createProfileName').value
-        
                 createProfile(name)
                 refreshNameLists()
                 break
             case 'modifyProfileSubmit':
                 console.log('Modify Profile Clicked')
+                name = document.getElementById('modifyProfileName').value
+                if(name == 0){
+                    console.log('Select Person')
+                    return 'select person'
+                }      
+                else{
+                    item = new userProfileItem()
+                    item.action = "modifyProfile"
+                    item.name = document.getElementById('modifyProfileName').value
+                    item.nick = document.getElementById('modifyProfileNick').value
+                    item.usesGCTTS = document.getElementById('modifyGcUsesTTS').checked
+                    vparams = String(document.getElementById('modifyGCVoiceInfo').value).split(" ")
+                    item.gcLangCode = vparams[0]
+                    item.gcSSMLGender = vparams[2]
+                    item.gcName = vparams[1]
+                    item.msVoice = "none"
+                    item.voiceChanged = true 
+                    modifyProfile(item)
+                    return 'profile updated'
+                
+                }   
                 break
             case 'deleteProfileSubmit':
                 name = document.getElementById('deleteProfileName').value
                 deleteProfile(name)
                 refreshNameLists()
-                break
-            
-            case 'test':
-                test()
                 break
         }}))    
 
@@ -164,6 +196,7 @@
                         console.log('Nothing set')
                     else
                         console.log(e.target.value)
+                        getUserProfile(e.target.value)
                 }
                 )})
         }
@@ -171,50 +204,74 @@
         function doRefreshVoiceLists(jsonObj){
             x = JSON.parse(jsonObj)
             voiceLists = document.getElementsByClassName('gcVoiceList')
-            console.log(voiceLists)
             Array.from(voiceLists).forEach(item => {
+                
                 item.innerHTML = ""
                 for(i = 0; i < x.length; i++){
-                    addListOption(item, x[i].voiceName)
+                    out = ""
+                    out = x[i].voiceLangCode + " " + x[i].voiceName + " "
+                    switch(x[i].voiceGender){
+                        case 0:
+                            out = out + 'unspecified'
+                        break
+                        case 1:
+                            out = out + 'male'
+                        break
+                        case 2:
+                            out = out + 'female'
+                        break
+                        case 3:
+                            out = out + 'neutral'
+                        break
+                    }
+                    addListOption(item, out)
                 }
                 item.addEventListener("click", (e) => {
                     if(e.target.value == '')
                         console.log('Nothing set')
                     else
                         console.log(e.target.value)
+                        
                 })
             })
         }
         
+        function fillModifyProfileWindow(obj){
+            jsonObj = JSON.parse(obj)
+            selection = jsonObj.gcLangCode + " " + jsonObj.gcName + " " + jsonObj.gcSSMLGender
+
+            setSelectBoxByText('modifyGCVoiceInfo', selection)
+            document.getElementById('modifyProfileNick').value = jsonObj.nick
+            document.getElementById('modifyGcUsesTTS').checked = jsonObj.usesGCTTS
+            
+        }
+
+        function setSelectBoxByText(eid, etxt) {
+            var eid = document.getElementById(eid);
+
+            for (i = 0; i < eid.options.length; ++i) {
+                eid.options[i].selected = false;
+            }
+
+            for (i = 0; i < eid.options.length; ++i) {
+                if (eid.options[i].text === etxt)
+                eid.options[i].selected = true;
+            }
+}
+
         //REST API Functions
         function createProfile(name){
             data = JSON.stringify({"name": name})
-            console.log(location.host)
-            //fetch('http://127.0.0.1:8000/createProfile', {
-            
-            
-            fetch(location + 'createProfile', {
+            fetch(getReturnURL() + '/createProfile', {
             method: 'POST',
             headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
             body: data
             })
         }
 
-        function userProfileUpdate(obj){
-            r = new userProfileItem()
-            r.action = "updateProfile"
-            r.name = "Serial"
-            r.nick = "Serial"
-            r.usesGCTTS = false
-            r.gcLangCode = "en-EN"
-            r.gcSSMLGender = SSMLGenderTypes.female
-            r.gcName = "some google voice"
-            r.msVoice = "MS Sam"
-            r.voiceChanged = true
-           
-            //data = JSON.stringify({"name": "Jason", "says": "hello"})
+        function modifyProfile(obj){
             data = JSON.stringify(obj)
-            fetch('http://127.0.0.1:8000/userProfileUpdate', {
+            fetch(getReturnURL() + '/modifyProfile', {
             headers: {'Accept': 'application/json','Content-Type': 'application/json'},
             method: 'POST',
             body: data
@@ -223,14 +280,14 @@
         
         function deleteProfile(name){
             data = JSON.stringify({"name": name})
-            fetch('http://127.0.0.1:8000/deleteProfile', {
+            fetch(getReturnURL() + '/deleteProfile', {
             method: 'DELETE',
             body: data,
             headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}
         })}
 
         function refreshNameLists(){
-            fetch('http://127.0.0.1:8000/getUserProfileNames', {
+            fetch(getReturnURL() + '/getUserProfileNames', {
             method: 'GET',
             headers: { 'Accept': 'application/json'}
             }).then((response) => response.json())
@@ -238,32 +295,54 @@
         }
 
         function refreshVoicesLists(){
-            fetch('http://127.0.0.1:8000/getGCVoicesList', {
+            fetch(getReturnURL() + '/getGCVoicesList', {
             method: 'GET',
             headers: { 'Accept': 'application/json'}
             }).then((response) => response.json())
             .then((jsonResp) => doRefreshVoiceLists(jsonResp))
         }
 
-        function test(){
-            r = new userProfileItem()
-            r.name = "Jason"
-            r.nick = "Jay"
-            r.usesGCTTS = "false"
-            r.gcLangCode = "en-EN"
-            r.gcSSMLGender = SSMLGenderTypes.female
-            r.gcName = "some google voice"
-            r.msVoice = "MS Sam"
-            r.voiceChanged = "true"
-           
-            //data = JSON.stringify({"name": "Jason", "says": "hello"})
-            data = JSON.stringify(r)
-            fetch('http://127.0.0.1:8000/userProfileUpdate', {
-            headers: {'Accept': 'application/json','Content-Type': 'application/json'},
-            method: 'POST',
-            body: data
-        }).then(response => response.json())
-          .then(response => console.log(response))}
+        function getSystemStatus(){
+            fetch(getReturnURL() + '/getSystemStatus', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json'}
+            }).then((response) => response.json())
+            .then((jsonResp) => {
+                
+                x = JSON.parse(jsonResp)
+                console.log(x)
+                
+                document.getElementById("statusCbconnected").innerText = "Chat bot connected : " + x['Cbconnected']
+                document.getElementById("statusNumberOfGCVoices").innerText = "Total Google Voices: " + x['numGCVoices']
+                document.getElementById("statusNumberOfProfiles").innerText = "Total Number of Profiles: " + x['numProfiles']
+            })
+        }
+
+
+        function getUserProfile(name){
+            if(name == ''){
+                console.log('Name Not Set')
+            }
+            else{
+                console.log('get record for ' + name)
+                data = JSON.stringify({"name": name})
+            
+                fetch(getReturnURL() + '/getUserProfile', {
+                method: 'POST',
+                body: data,
+                headers: { 'Accept': 'application/json','Content-Type': 'application/json'}
+                }).then((response) => response.json())
+                .then((jsonResp) => fillModifyProfileWindow(jsonResp)) 
+            }
+        }
+
+        function isChatBotConnected(){
+                fetch(getReturnURL() + '/isChatBotConnected', {
+                method: 'get',
+                headers: { 'Accept': 'application/json'}
+                }).then((response) => response.text())
+                .then((textResp) => console.log('Is Chat Bot Connecte:' + textResp))
+        }
 
         class userProfileItem{
             constructor(){
@@ -281,13 +360,27 @@
         }
 
         const SSMLGenderTypes = {
-            male: 0,
-            female: 1,
-            neutral: 2
+            unspecified: 0,
+            male: 1,
+            female: 2,
+            neutral: 3
         }
+
+        function getReturnURL(){
+            protocol = location.protocol
+            ip = location.host
+            out = protocol + "//" + ip 
+            return out
+        }
+
+        
+
+        
 
 </script>
 
 </body>
 </html>
+
+
 

@@ -205,10 +205,10 @@ def userCanTTS(userIsBroadcaster, inCanBroadCasterTTS, userTTSEnabled):
     #Consider just passing userTTSEnabled back for both broadcaster and regular chatters
     if(userIsBroadcaster):
         return canBroadCasterTTS
-    else:
-        return userTTSEnabled
+    
+    return userTTSEnabled
 
-    return False
+    
 
 def containsURLS(string):
     
@@ -217,8 +217,8 @@ def containsURLS(string):
     
     if len(url) == 0:
         return False
-    else: 
-        return True
+     
+    return True
 
     
 if __name__ == "__main__":

@@ -4,8 +4,9 @@ from threading import Timer, enumerate
 from profileDB import profileDB, profileListItem
 
 from fastapi import FastAPI, Response, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from dotenv import load_dotenv
 from google.cloud import texttospeech
@@ -14,6 +15,8 @@ from google.oauth2 import service_account
 load_dotenv()
 safile=str(os.environ['SAFILE'])
 app = FastAPI()
+
+app.mount("/asset", StaticFiles(directory="asset"), name='asset')
 
 credentials = service_account.Credentials.from_service_account_file(safile)
 client = texttospeech.TextToSpeechClient(credentials=credentials)
